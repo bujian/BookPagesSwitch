@@ -116,7 +116,7 @@ public class MyBook : MonoBehaviour
                     ShadowRtoL.gameObject.SetActive(true);
                     ShadowLtR.gameObject.SetActive(false);
                     //开始翻页
-                    FollowHand_BottomRight(bpPos);
+                    FollowHand(bpPos);
                 }
                 break;
             case TurningStyle.BottomLeft:
@@ -134,7 +134,7 @@ public class MyBook : MonoBehaviour
                     ShadowRtoL.gameObject.SetActive(false);
                     ShadowLtR.gameObject.SetActive(true);
 
-                    FollowHand_BottomLeft(bpPos);
+                    FollowHand(bpPos, false);
 
                 }
                 break;
@@ -153,7 +153,7 @@ public class MyBook : MonoBehaviour
                     ShadowRtoL.gameObject.SetActive(true);
                     ShadowLtR.gameObject.SetActive(false);
 
-                    FollowHand_TopRight(bpPos);
+                    FollowHand(bpPos);
                 }
                 break;
             case TurningStyle.TopLeft:
@@ -162,7 +162,7 @@ public class MyBook : MonoBehaviour
                     CenterPicturePivotAdjust(CenterLeft, UIWidget.Pivot.TopRight);
                     CenterPicturePivotAdjust(CenterRight, Right.pivot);
                     CenterRight.transform.position = Right.transform.position;
-                    ClipPivotChange(TurningStyle.TopLeft);
+                    ClipPivotChange(cur_style);
                     ShadowLtR.pivot = UIWidget.Pivot.TopLeft;
 
                     CenterRight.depth = CenterPicLayer;
@@ -171,7 +171,7 @@ public class MyBook : MonoBehaviour
                     ShadowRtoL.gameObject.SetActive(false);
                     ShadowLtR.gameObject.SetActive(true);
 
-                    FollowHand_TopLeft(bpPos);
+                    FollowHand(bpPos, false);
                 }
                 break;
         }
@@ -185,224 +185,146 @@ public class MyBook : MonoBehaviour
     }
 
     /// <summary>
-    /// 右下角翻页
+    /// 计算点和角度
     /// </summary>
-    /// <param name="c"></param>
-    void FollowHand_BottomRight(Vector3 c)
+    /// <param name="c">翻页的页脚点</param>
+    /// <param name="t1">折痕点</param>
+    /// <param name="clipAngle">翻页裁剪容器需要翻转的角度</param>
+    /// <param name="clipPicAngle">翻页图片需要翻转的角度</param>
+    void GetT1AndAngle(Vector3 c, out Vector3 t1, out Vector3 clipAngle, out Vector3 clipPicAngle)
     {
-        CenterLeft.transform.SetParent(BookPanel.transform, true);
-        CenterRight.transform.SetParent(BookPanel.transform, true);
-        Right.transform.SetParent(BookPanel.transform, true);
-        ShadowRtoL.transform.SetParent(BookPanel.transform, true);
-
-        Vector3 t1 = new Vector3();
-
-        float cbXdel = Mathf.Abs(c.x - brpos.x);
-        float cbYdel = Mathf.Abs(c.y - brpos.y);
-        float cbAngle = Mathf.Atan(cbYdel/ cbXdel);
-
-        t1.y = brpos.y;
-        t1.x = brpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
-
-        Vector3 worldt1 = transform.TransformPoint(t1);
-
-        Vector3 clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
-        Vector3 rightAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
-        if (c.y < brpos.y)
+        clipAngle = Vector4.zero;
+        clipPicAngle = Vector4.zero;
+        t1 = c;
+        switch (cur_style)
         {
-            clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
-            rightAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
+            case TurningStyle.BottomRight:
+                {
+                    float cbXdel = Mathf.Abs(c.x - brpos.x);
+                    float cbYdel = Mathf.Abs(c.y - brpos.y);
+                    float cbAngle = Mathf.Atan(cbYdel / cbXdel);
 
-            print("rightAngle : " + rightAngle);
+                    t1.y = brpos.y;
+                    t1.x = brpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
+
+                    t1 = transform.TransformPoint(t1);
+
+                    clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
+                    clipPicAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
+                    if (c.y < brpos.y)
+                    {
+                        clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
+                        clipPicAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
+                    }
+                }
+                break;
+            case TurningStyle.BottomLeft:
+                {
+                    float cbXdel = Mathf.Abs(c.x - blpos.x);
+                    float cbYdel = Mathf.Abs(c.y - blpos.y);
+                    float cbAngle = Mathf.Atan(cbYdel / cbXdel);
+
+                    t1.y = blpos.y;
+                    t1.x = blpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
+
+                    t1 = transform.TransformPoint(t1);
+
+                    clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
+                    clipPicAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
+                    if (c.y < blpos.y)
+                    {
+                        clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
+                        clipPicAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
+                    }
+                }
+                break;
+            case TurningStyle.TopRight:
+                {
+                    float cbXdel = Mathf.Abs(c.x - trpos.x);
+                    float cbYdel = Mathf.Abs(c.y - trpos.y);
+                    float cbAngle = Mathf.Atan(cbYdel / cbXdel);
+
+                    t1.y = trpos.y;
+                    t1.x = trpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
+
+                    t1 = transform.TransformPoint(t1);
+
+                    clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
+                    clipPicAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
+                    if (c.y > trpos.y)
+                    {
+                        clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
+                        clipPicAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
+                    }
+                }
+                break;
+            case TurningStyle.TopLeft:
+                {
+                    float cbXdel = Mathf.Abs(c.x - tlpos.x);
+                    float cbYdel = Mathf.Abs(c.y - tlpos.y);
+                    float cbAngle = Mathf.Atan(cbYdel / cbXdel);
+
+                    t1.y = tlpos.y;
+                    t1.x = tlpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
+
+                    t1 = transform.TransformPoint(t1);
+
+                    clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
+                    clipPicAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
+                    if (c.y > tlpos.y)
+                    {
+                        clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
+                        clipPicAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
+                    }
+                }
+                break;
         }
-
-        TurnClip.transform.localEulerAngles = clipAngle;
-        TurnClip.transform.position = worldt1;
-
-        ShadowRtoL.transform.SetParent(TurnClip.transform);
-        ShadowRtoL.transform.localPosition = Vector3.zero;
-        ShadowRtoL.transform.localEulerAngles = Vector3.zero;
-
-        NextClip.transform.localEulerAngles = clipAngle;
-        NextClip.transform.position = worldt1;
-
-        CenterRight.transform.position = transform.TransformPoint(c);
-        CenterRight.transform.eulerAngles = rightAngle;
-
-        CenterLeft.transform.SetParent(TurnClip.transform, true);
-        CenterRight.transform.SetParent(TurnClip.transform, true);
-        Right.transform.SetParent(NextClip.transform, true);
-        ShadowRtoL.transform.SetParent(CenterRight.GetComponentInChildren<UIPanel>().transform, true);
-
-        Fresh(CenterLeft.transform);
-        Fresh(CenterRight.transform);
-        Fresh(Right.transform);
     }
 
     /// <summary>
-    /// 左下角翻页
+    /// 右下角翻页
     /// </summary>
     /// <param name="c"></param>
-    void FollowHand_BottomLeft(Vector3 c)
+    void FollowHand(Vector3 c, bool rToL = true)
     {
+        UITexture shadow = rToL ? ShadowRtoL : ShadowLtR;
+        UITexture cipPic = rToL ? CenterRight : CenterLeft;
+
         CenterLeft.transform.SetParent(BookPanel.transform, true);
         CenterRight.transform.SetParent(BookPanel.transform, true);
         Right.transform.SetParent(BookPanel.transform, true);
-        ShadowLtR.transform.SetParent(BookPanel.transform, true);
+        shadow.transform.SetParent(BookPanel.transform, true);
 
-        Vector3 t1 = new Vector3();
+        Vector3 clipAngle;
+        Vector3 t1;
+        Vector3 clipPicAngle;
 
-        float cbXdel = Mathf.Abs(c.x - blpos.x);
-        float cbYdel = Mathf.Abs(c.y - blpos.y);
-        float cbAngle = Mathf.Atan(cbYdel / cbXdel);
-
-        t1.y = blpos.y;
-        t1.x = blpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
-
-        Vector3 worldt1 = transform.TransformPoint(t1);
-
-        Vector3 clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
-        Vector3 rightAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
-        if (c.y < blpos.y)
-        {
-            clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
-            rightAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
-        }
+        GetT1AndAngle(c, out t1, out clipAngle, out clipPicAngle);
 
         TurnClip.transform.localEulerAngles = clipAngle;
-        TurnClip.transform.position = worldt1;
+        TurnClip.transform.position = t1;
 
-        NextClip.transform.localEulerAngles = clipAngle;
-        NextClip.transform.position = worldt1;
+        shadow.transform.SetParent(TurnClip.transform);
+        shadow.transform.localPosition = Vector3.zero;
+        shadow.transform.localEulerAngles = Vector3.zero;
 
-        ShadowLtR.transform.SetParent(TurnClip.transform);
-        ShadowLtR.transform.localPosition = Vector3.zero;
-        ShadowLtR.transform.localEulerAngles = Vector3.zero;
+        NextClip.transform.eulerAngles = clipAngle;
+        NextClip.transform.position = t1;
 
-        CenterLeft.transform.position = transform.TransformPoint(c);
-        CenterLeft.transform.eulerAngles = rightAngle;
+        cipPic.transform.eulerAngles = clipPicAngle;
+        cipPic.transform.position = transform.TransformPoint(c);
 
         CenterLeft.transform.SetParent(TurnClip.transform, true);
         CenterRight.transform.SetParent(TurnClip.transform, true);
         Right.transform.SetParent(NextClip.transform, true);
-        ShadowLtR.transform.SetParent(CenterLeft.GetComponentInChildren<UIPanel>().transform, true);
+        shadow.transform.SetParent(cipPic.GetComponentInChildren<UIPanel>().transform, true);
 
         Fresh(CenterLeft.transform);
         Fresh(CenterRight.transform);
         Fresh(Right.transform);
     }
 
-
-    void FollowHand_TopRight(Vector3 c)
-    {
-        CenterLeft.transform.SetParent(BookPanel.transform, true);
-        CenterRight.transform.SetParent(BookPanel.transform, true);
-        Right.transform.SetParent(BookPanel.transform, true);
-        ShadowRtoL.transform.SetParent(BookPanel.transform, true);
-
-        Vector3 t1 = new Vector3();
-
-        float cbXdel = Mathf.Abs(c.x - trpos.x);
-        float cbYdel = Mathf.Abs(c.y - trpos.y);
-        float cbAngle = Mathf.Atan(cbYdel / cbXdel);
-
-        //print("y / x : " + cbYdel / cbXdel + ", angle1 : " + cbAngle + ", angle2" + Mathf.Atan2(cbYdel , cbXdel) +  ", angleo" + cbAngle * Mathf.Rad2Deg);
-
-        t1.y = trpos.y;
-        t1.x = trpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
-
-        //print("t0 : " + c + ", t1 : " + t1 + ", angle: " + cbAngle * Mathf.Rad2Deg);
-
-        Vector3 worldt1 = transform.TransformPoint(t1);
-
-        Vector3 clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
-        Vector3 rightAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
-        if (c.y > trpos.y)
-        {
-            clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
-            rightAngle = new Vector3(0, 0, -2 * cbAngle * Mathf.Rad2Deg);
-
-            print("rightAngle : " + rightAngle);
-        }
-
-        TurnClip.transform.localEulerAngles = clipAngle;
-        TurnClip.transform.position = worldt1;
-
-        NextClip.transform.localEulerAngles = clipAngle;
-        NextClip.transform.position = worldt1;
-
-
-        ShadowRtoL.transform.SetParent(TurnClip.transform);
-        ShadowRtoL.transform.localPosition = Vector3.zero;
-        ShadowRtoL.transform.localEulerAngles = Vector3.zero;
-
-        CenterRight.transform.position = transform.TransformPoint(c);
-        CenterRight.transform.eulerAngles = rightAngle;
-
-        CenterLeft.transform.SetParent(TurnClip.transform, true);
-        CenterRight.transform.SetParent(TurnClip.transform, true);
-        Right.transform.SetParent(NextClip.transform, true);
-        ShadowRtoL.transform.SetParent(CenterRight.GetComponentInChildren<UIPanel>().transform, true);
-
-        Fresh(CenterLeft.transform);
-        Fresh(CenterRight.transform);
-        Fresh(Right.transform);
-    }
-
-    void FollowHand_TopLeft(Vector3 c)
-    {
-        CenterLeft.transform.SetParent(BookPanel.transform, true);
-        CenterRight.transform.SetParent(BookPanel.transform, true);
-        Right.transform.SetParent(BookPanel.transform, true);
-        ShadowLtR.transform.SetParent(BookPanel.transform, true);
-
-        Vector3 t1 = new Vector3();
-
-        float cbXdel = Mathf.Abs(c.x - tlpos.x);
-        float cbYdel = Mathf.Abs(c.y - tlpos.y);
-        float cbAngle = Mathf.Atan(cbYdel / cbXdel);
-
-        //print("y / x : " + cbYdel / cbXdel + ", angle1 : " + cbAngle + ", angle2" + Mathf.Atan2(cbYdel , cbXdel) +  ", angleo" + cbAngle * Mathf.Rad2Deg);
-
-        t1.y = tlpos.y;
-        t1.x = tlpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
-
-        //print("t0 : " + c + ", t1 : " + t1 + ", angle: " + cbAngle * Mathf.Rad2Deg);
-
-        Vector3 worldt1 = transform.TransformPoint(t1);
-
-        Vector3 clipAngle = new Vector3(0, 0, -cbAngle * Mathf.Rad2Deg);
-        Vector3 rightAngle = new Vector3(0, 0, - 2 * cbAngle * Mathf.Rad2Deg);
-        if (c.y > tlpos.y)
-        {
-            clipAngle = new Vector3(0, 0, cbAngle * Mathf.Rad2Deg);
-            rightAngle = new Vector3(0, 0, 2 * cbAngle * Mathf.Rad2Deg);
-
-            print("rightAngle : " + rightAngle);
-        }
-
-        TurnClip.transform.localEulerAngles = clipAngle;
-        TurnClip.transform.position = worldt1;
-
-        NextClip.transform.localEulerAngles = clipAngle;
-        NextClip.transform.position = worldt1;
-
-        ShadowLtR.transform.SetParent(TurnClip.transform);
-        ShadowLtR.transform.localPosition = Vector3.zero;
-        ShadowLtR.transform.localEulerAngles = Vector3.zero;
-
-        CenterLeft.transform.position = transform.TransformPoint(c);
-        CenterLeft.transform.eulerAngles = rightAngle;
-
-        CenterLeft.transform.SetParent(TurnClip.transform, true);
-        CenterRight.transform.SetParent(TurnClip.transform, true);
-        Right.transform.SetParent(NextClip.transform, true);
-        ShadowLtR.transform.SetParent(CenterLeft.GetComponentInChildren<UIPanel>().transform, true);
-
-        Fresh(CenterLeft.transform);
-        Fresh(CenterRight.transform);
-        Fresh(Right.transform);
-    }
+  
 
 
     void Fresh(Transform trans)
