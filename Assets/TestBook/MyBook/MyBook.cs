@@ -1,45 +1,46 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MyBook : MonoBehaviour
 {
     /// <summary>
     /// 子孙根
     /// </summary>
-    public GameObject BookPanel;
+    public RectTransform BookPanel;
     /// <summary>
     /// 翻页右面
     /// </summary>
-    public UITexture CenterRight;
+    public Image TurnRight;
     /// <summary>
     /// 翻页左面
     /// </summary>
-    public UITexture CenterLeft;
+    public Image TurnLeft;
     /// <summary>
     /// 翻页裁剪布局
     /// </summary>
-    public UIPanel TurnClip;
+    public Image TurnClip;
     /// <summary>
     /// 新页裁剪布局
     /// </summary>
-    public UIPanel NextClip;
+    public Image NextClip;
     /// <summary>
     /// 左页面
     /// </summary>
-    public UITexture Left;
+    //public UITexture Left;
     /// <summary>
     /// 右页面
     /// </summary>
-    public UITexture Right;
+    public Image Right;
     /// <summary>
     /// 左翻右的阴影
     /// </summary>
-    public UITexture ShadowLtR;
+    public Image ShadowLtR;
     /// <summary>
     /// 右翻左的阴影
     /// </summary>
-    public UITexture ShadowRtoL;
+    public Image ShadowRtoL;
 
     /// <summary>
     /// 右下角位置
@@ -58,12 +59,7 @@ public class MyBook : MonoBehaviour
     /// </summary>
     Vector3 trpos;
 
-    //单页面宽度
-    float Width;
-    //单页面高度
-    float Height;
-
-    public Camera uicam;
+    public BookSource Source;
 
     public TurningStyle Cur_Style
     {
@@ -74,7 +70,7 @@ public class MyBook : MonoBehaviour
             InitStyle(cur_style);
         }
     }
-    TurningStyle cur_style = TurningStyle.TopRight;
+    TurningStyle cur_style = TurningStyle.BottomLeft;
 
     int CenterPicLayer = 2;
 
@@ -82,13 +78,18 @@ public class MyBook : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-        Width = Right.width;
-        Height = Right.height;
+        //单页面宽度
+        float Width;
+        //单页面高度
+        float Height;
 
-        brpos = new Vector3(Width, -Height / 2);
-        blpos = new Vector3(0, -Height / 2);
-        trpos = new Vector3(Width, Height / 2);
-        tlpos = new Vector3(0, Height / 2);
+        Width = Right.rectTransform.sizeDelta.x;
+        Height = Right.rectTransform.sizeDelta.y;
+
+        brpos = new Vector3(-BookPanel.sizeDelta.x / 2 + Width, -Height / 2);
+        blpos = new Vector3(-BookPanel.sizeDelta.x / 2 + 0, -Height / 2);
+        trpos = new Vector3(-BookPanel.sizeDelta.x / 2 + Width, Height / 2);
+        tlpos = new Vector3(-BookPanel.sizeDelta.x / 2 + 0, Height / 2);
 
         InitStyle(cur_style);
     }
@@ -96,90 +97,107 @@ public class MyBook : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        var pos = Input.mousePosition;
-        var bpPos = transform.InverseTransformPoint( uicam.ScreenToWorldPoint(pos));
-        bpPos.z = 0;
+        var pos = BookPanel.transform.InverseTransformPoint(Input.mousePosition);
+        print(pos);
+        FollowPoint(pos);
+
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            if ((int)Cur_Style + 1 <= 3) Cur_Style++;
+            else Cur_Style = 0;
+        }
     }
 
     void InitStyle(TurningStyle style)
     {
-        switch (Cur_Style)
+        switch (style)
         {
             case TurningStyle.BottomRight:
                 {
                     //清除翻页左右面的旋转角度
                     InitCenterPicEular();
                     //设置翻页右面的对齐方式
-                    CenterPicturePivotAdjust(CenterRight, UIWidget.Pivot.BottomLeft);
+                    ImagePivotChanged(TurnRight, TurningStyle.BottomLeft);
                     //设置翻页左面的对齐方式
-                    CenterPicturePivotAdjust(CenterLeft, Right.pivot);
+                    TurnLeft.rectTransform.pivot = Right.rectTransform.pivot;
                     //设置翻页左面的位置
-                    CenterLeft.transform.position = Right.transform.position;
-                    //设置翻页裁剪容器的大小
+                    TurnLeft.transform.position = Right.transform.position;
+                    //设置翻页裁剪容器的锚点
                     ClipPivotChange(Cur_Style);
                     //设置阴影的对齐方式
-                    ShadowRtoL.pivot = UIWidget.Pivot.BottomRight;
-                    //设置层关系
-                    CenterRight.depth = CenterPicLayer + 1;
-                    CenterLeft.depth = CenterPicLayer;
+                    ImagePivotChanged(ShadowRtoL, style);
 
                     ShadowRtoL.gameObject.SetActive(true);
                     ShadowLtR.gameObject.SetActive(false);
+
+                    SetImageOrder(TurnLeft, TurnRight, Right);
 
                 }
                 break;
             case TurningStyle.BottomLeft:
                 {
                     InitCenterPicEular();
-                    CenterPicturePivotAdjust(CenterLeft, UIWidget.Pivot.BottomRight);
-                    CenterPicturePivotAdjust(CenterRight, Right.pivot);
-                    CenterRight.transform.position = Right.transform.position;
-                    ClipPivotChange(Cur_Style);
-                    ShadowLtR.pivot = UIWidget.Pivot.BottomLeft;
+                    ImagePivotChanged(TurnLeft, TurningStyle.BottomRight);
 
-                    CenterRight.depth = CenterPicLayer;
-                    CenterLeft.depth = CenterPicLayer + 1;
+                    TurnRight.rectTransform.pivot = Right.rectTransform.pivot;
+                    TurnRight.transform.position = Right.transform.position;
+
+                    ClipPivotChange(Cur_Style);
+
+                    ImagePivotChanged(ShadowLtR, style);
 
                     ShadowRtoL.gameObject.SetActive(false);
                     ShadowLtR.gameObject.SetActive(true);
+
+                    SetImageOrder(TurnRight, TurnLeft, Right);
 
                 }
                 break;
             case TurningStyle.TopRight:
                 {
                     InitCenterPicEular();
-                    CenterPicturePivotAdjust(CenterRight, UIWidget.Pivot.TopLeft);
-                    CenterPicturePivotAdjust(CenterLeft, Right.pivot);
-                    CenterLeft.transform.position = Right.transform.position;
-                    ClipPivotChange(TurningStyle.TopRight);
-                    ShadowRtoL.pivot = UIWidget.Pivot.TopRight;
+                    ImagePivotChanged(TurnRight, TurningStyle.TopLeft);
 
-                    CenterRight.depth = CenterPicLayer + 1;
-                    CenterLeft.depth = CenterPicLayer;
+                    TurnLeft.rectTransform.pivot = Right.rectTransform.pivot;
+                    TurnLeft.transform.position = Right.transform.position;
+
+                    ClipPivotChange(TurningStyle.TopRight);
+                    ImagePivotChanged(ShadowRtoL, style);
 
                     ShadowRtoL.gameObject.SetActive(true);
                     ShadowLtR.gameObject.SetActive(false);
+                    SetImageOrder(TurnLeft, TurnRight, Right);
 
                 }
                 break;
             case TurningStyle.TopLeft:
                 {
                     InitCenterPicEular();
-                    CenterPicturePivotAdjust(CenterLeft, UIWidget.Pivot.TopRight);
-                    CenterPicturePivotAdjust(CenterRight, Right.pivot);
-                    CenterRight.transform.position = Right.transform.position;
-                    ClipPivotChange(Cur_Style);
-                    ShadowLtR.pivot = UIWidget.Pivot.TopLeft;
 
-                    CenterRight.depth = CenterPicLayer;
-                    CenterLeft.depth = CenterPicLayer + 1;
+                    ImagePivotChanged(TurnLeft, TurningStyle.TopRight);
+
+                    TurnRight.rectTransform.pivot = Right.rectTransform.pivot;
+                    TurnRight.transform.position = Right.transform.position;
+                    ClipPivotChange(Cur_Style);
+
+                    ImagePivotChanged(ShadowLtR, style);
 
                     ShadowRtoL.gameObject.SetActive(false);
                     ShadowLtR.gameObject.SetActive(true);
+                    SetImageOrder(TurnRight, TurnLeft, Right);
 
                 }
                 break;
         }
+
+        print("style changes to " + style);
+    }
+
+    void SetImageOrder(Image thisP, Image centerP, Image nextP)
+    {
+        thisP.sprite = Source.ThisPage;
+        centerP.sprite = Source.CenterPage;
+        nextP.sprite = Source.NextPage;
     }
 
     public void FollowPoint(Vector3 bpPos)
@@ -189,14 +207,16 @@ public class MyBook : MonoBehaviour
             case TurningStyle.BottomRight:
             case TurningStyle.TopRight:
                 {
+                    if(bpPos.x <= brpos.x)
                     //开始翻页
-                    FollowHand(bpPos);
+                        FollowHand(bpPos);
                 }
                 break;
             case TurningStyle.BottomLeft:
             case TurningStyle.TopLeft:
                 {
-                    FollowHand(bpPos, false);
+                    if(bpPos.x >= blpos.x)
+                        FollowHand(bpPos, false);
                 }
                 break;
         }
@@ -204,8 +224,11 @@ public class MyBook : MonoBehaviour
 
     void InitCenterPicEular()
     {
-        CenterLeft.transform.eulerAngles = Vector3.zero;
-        CenterRight.transform.eulerAngles = Vector3.zero;
+        TurnLeft.transform.eulerAngles = Vector3.zero;
+        TurnRight.transform.eulerAngles = Vector3.zero;
+        TurnLeft.transform.SetParent(BookPanel, true);
+        TurnRight.transform.SetParent(BookPanel, true);
+        Right.transform.SetParent(BookPanel, true);
     }
 
     /// <summary>
@@ -229,7 +252,9 @@ public class MyBook : MonoBehaviour
                     float cbAngle = Mathf.Atan(cbYdel / cbXdel);
 
                     t1.y = brpos.y;
-                    t1.x = brpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
+
+                    if (cbAngle == 0) t1.x = brpos.x - cbXdel / 2;
+                    else t1.x = brpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
 
                     t1 = transform.TransformPoint(t1);
 
@@ -249,7 +274,9 @@ public class MyBook : MonoBehaviour
                     float cbAngle = Mathf.Atan(cbYdel / cbXdel);
 
                     t1.y = blpos.y;
-                    t1.x = blpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
+
+                    if (cbAngle == 0) t1.x = blpos.x + cbXdel / 2;
+                    else t1.x = blpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
 
                     t1 = transform.TransformPoint(t1);
 
@@ -269,7 +296,8 @@ public class MyBook : MonoBehaviour
                     float cbAngle = Mathf.Atan(cbYdel / cbXdel);
 
                     t1.y = trpos.y;
-                    t1.x = trpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
+                    if (cbAngle == 0) t1.x = trpos.x - cbXdel / 2;
+                    else t1.x = trpos.x - cbYdel / Mathf.Sin(2 * cbAngle);
 
                     t1 = transform.TransformPoint(t1);
 
@@ -289,7 +317,8 @@ public class MyBook : MonoBehaviour
                     float cbAngle = Mathf.Atan(cbYdel / cbXdel);
 
                     t1.y = tlpos.y;
-                    t1.x = tlpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
+                    if (cbAngle == 0) t1.x = tlpos.x + cbXdel / 2;
+                    else t1.x = tlpos.x + cbYdel / Mathf.Sin(2 * cbAngle);
 
                     t1 = transform.TransformPoint(t1);
 
@@ -311,11 +340,11 @@ public class MyBook : MonoBehaviour
     /// <param name="c"></param>
     void FollowHand(Vector3 c, bool rToL = true)
     {
-        UITexture shadow = rToL ? ShadowRtoL : ShadowLtR;
-        UITexture cipPic = rToL ? CenterRight : CenterLeft;
+        Image shadow = rToL ? ShadowRtoL : ShadowLtR;
+        Image cipPic = rToL ? TurnRight : TurnLeft;
 
-        CenterLeft.transform.SetParent(BookPanel.transform, true);
-        CenterRight.transform.SetParent(BookPanel.transform, true);
+        TurnLeft.transform.SetParent(BookPanel.transform, true);
+        TurnRight.transform.SetParent(BookPanel.transform, true);
         Right.transform.SetParent(BookPanel.transform, true);
         shadow.transform.SetParent(BookPanel.transform, true);
 
@@ -338,37 +367,11 @@ public class MyBook : MonoBehaviour
         cipPic.transform.eulerAngles = clipPicAngle;
         cipPic.transform.position = transform.TransformPoint(c);
 
-        CenterLeft.transform.SetParent(TurnClip.transform, true);
-        CenterRight.transform.SetParent(TurnClip.transform, true);
+        TurnLeft.transform.SetParent(TurnClip.transform, true);
+        TurnRight.transform.SetParent(TurnClip.transform, true);
         Right.transform.SetParent(NextClip.transform, true);
-        shadow.transform.SetParent(cipPic.GetComponentInChildren<UIPanel>().transform, true);
-
-        //Fresh(CenterLeft.transform);
-        //Fresh(CenterRight.transform);
-        //Fresh(Right.transform);
-
-        // print(Right.transform.position);
-        PanelFresh();
-    }
-
-    void PanelFresh()
-    {
-        CenterLeft.transform.localScale = Vector3.one;
-        CenterRight.transform.localScale = Vector3.one;
-        Right.transform.localScale = Vector3.one;
-
-        var ps = BookPanel.GetComponentsInChildren<UIPanel>();
-        for (int i = 0; i < ps.Length; i++)
-        {
-            ps[i].Refresh();
-        }
-    }
-
-    void Fresh(Transform trans)
-    {
-        trans.gameObject.SetActive(false);
-        trans.localScale = Vector3.one;
-        trans.gameObject.SetActive(true);
+        shadow.transform.SetParent(cipPic.transform, true);
+        cipPic.transform.SetAsLastSibling();
     }
 
     void ClipPivotChange(TurningStyle style)
@@ -407,40 +410,34 @@ public class MyBook : MonoBehaviour
     /// </summary>
     /// <param name="panel"></param>
     /// <param name="pivot">左下角为0，0</param>
-    void SetPanelOffset(UIPanel panel, Vector2 pivot)
+    void SetPanelOffset(Image panel, Vector2 pivot)
     {
         if (panel == null) return;
-        Vector2 vec = panel.GetViewSize();
-        panel.clipOffset = new Vector2(vec.x / 2 - vec.x * pivot.x, vec.y / 2 - pivot.y * vec.y);
+        panel.rectTransform.pivot = pivot;
     }
 
-    void CenterPicturePivotAdjust(UITexture left, UIWidget.Pivot pivot)
+    void ImagePivotChanged(Image left, TurningStyle pivot)
     {
-        var panel = left.GetComponentInChildren<UIPanel>();
-        left.pivot = pivot;
-        Vector2 panelSize = panel.GetViewSize();
-        float pHeight = panelSize.y;
-        float pWidth = panelSize.x;
         switch (pivot)
         {
-            case UIWidget.Pivot.TopLeft:
+            case TurningStyle.TopLeft:
                 {
-                    panel.clipOffset = new Vector2(pWidth / 2, -pHeight / 2);
+                    left.rectTransform.pivot = new Vector2(0, 1);
                 }
                 break;
-            case UIWidget.Pivot.TopRight:
+            case TurningStyle.TopRight:
                 {
-                    panel.clipOffset = new Vector2(-pWidth / 2, -pHeight / 2);
+                    left.rectTransform.pivot = new Vector2(1, 1);
                 }
                 break;
-            case UIWidget.Pivot.BottomLeft:
+            case TurningStyle.BottomLeft:
                 {
-                    panel.clipOffset = new Vector2(pWidth / 2, pHeight / 2);
+                    left.rectTransform.pivot = new Vector2(0, 0);
                 }
                 break;
-            case UIWidget.Pivot.BottomRight:
+            case TurningStyle.BottomRight:
                 {
-                    panel.clipOffset = new Vector2(-pWidth / 2, pHeight / 2);
+                    left.rectTransform.pivot = new Vector2(1, 0);
                 }
                 break;
         }
@@ -453,4 +450,12 @@ public class MyBook : MonoBehaviour
         TopLeft,
         TopRight,
     }
+}
+
+[System.Serializable]
+public class BookSource
+{
+    public Sprite NextPage;
+    public Sprite ThisPage;
+    public Sprite CenterPage;
 }
