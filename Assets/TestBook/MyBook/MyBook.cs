@@ -73,15 +73,16 @@ public class MyBook : MonoBehaviour
     TurningStyle cur_style = TurningStyle.BottomLeft;
 
     int CenterPicLayer = 2;
+    //单页面宽度
+    float Width;
+    //单页面高度
+    float Height;
 
 
     // Use this for initialization
     void Start()
     {
-        //单页面宽度
-        float Width;
-        //单页面高度
-        float Height;
+
 
         Width = Right.rectTransform.sizeDelta.x;
         Height = Right.rectTransform.sizeDelta.y;
@@ -190,7 +191,6 @@ public class MyBook : MonoBehaviour
                 break;
         }
 
-        print("style changes to " + style);
     }
 
     void SetImageOrder(Image thisP, Image centerP, Image nextP)
